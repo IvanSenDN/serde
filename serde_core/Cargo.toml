@@ -1,17 +1,20 @@
 [package]
 name = "serde_core"
 version = "1.0.228"
-authors = ["Erick Tryzelaar <erick.tryzelaar@gmail.com>", "David Tolnay <dtolnay@gmail.com>"]
+authors = [
+    "Erick Tryzelaar <erick.tryzelaar@gmail.com>",
+    "David Tolnay <dtolnay@gmail.com>",
+]
 build = "build.rs"
 categories = ["encoding", "no-std", "no-std::no-alloc"]
 description = "Serde traits only, with no support for derive -- use the `serde` crate instead"
 documentation = "https://docs.rs/serde_core"
-edition = "2021"
+edition = "2024"
 homepage = "https://serde.rs"
 keywords = ["serde", "serialization", "no_std"]
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/serde-rs/serde"
-rust-version = "1.56"
+rust-version = "1.93"
 
 [dev-dependencies]
 serde = { version = "1", path = "../serde" }
@@ -31,13 +34,8 @@ rustdoc-args = [
     "--extern-html-root-url=std=https://doc.rust-lang.org",
 ]
 
-# This cfg cannot be enabled, but it still forces Cargo to keep serde_derive's
-# version in lockstep with serde's, even if someone depends on the two crates
-# separately with serde's "derive" feature disabled. Every serde_derive release
-# is compatible with exactly one serde release because the generated code
-# involves nonpublic APIs which are not bound by semver.
-[target.'cfg(any())'.dependencies]
-serde_derive = { version = "=1.0.228", path = "../serde_derive" }
+[dependencies]
+serde_derive = { version = "=1.0.228", path = "../serde_derive", optional = true }
 
 
 ### FEATURES #################################################################
@@ -68,3 +66,10 @@ rc = []
 # Provide impls for Result<T, E>. Convenient in some contexts but can lead to
 # confusion if ? or unwrap are used incautiously.
 result = []
+
+# Support for custom allocators via nightly allocator_api feature.
+# Enables DeserializeIn trait and StringIn type for arena allocation.
+allocator_api = ["serde_derive?/allocator_api"]
+
+# Re-export serde_derive macros
+derive = ["serde_derive"]

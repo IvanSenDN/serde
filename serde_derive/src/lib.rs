@@ -86,6 +86,8 @@ mod bound;
 mod fragment;
 
 mod de;
+#[cfg(feature = "allocator_api")]
+mod de_in;
 mod deprecated;
 mod dummy;
 mod pretend;
@@ -122,6 +124,30 @@ pub fn derive_serialize(input: TokenStream) -> TokenStream {
 pub fn derive_deserialize(input: TokenStream) -> TokenStream {
     let mut input = parse_macro_input!(input as DeriveInput);
     de::expand_derive_deserialize(&mut input)
+        .unwrap_or_else(syn::Error::into_compile_error)
+        .into()
+}
+
+/// Derive macro for `DeserializeIn` trait.
+///
+/// Similar to `Deserialize`, but for types that use a custom allocator.
+/// The type must have a type parameter with `Allocator` bound.
+///
+/// # Example
+///
+/// ```ignore
+/// #[derive(DeserializeIn)]
+/// pub struct Person<A: Allocator> {
+///     name: String<A>,
+///     age: u8,
+///     jobs: Vec<String<A>, A>,
+/// }
+/// ```
+#[cfg(feature = "allocator_api")]
+#[proc_macro_derive(DeserializeIn, attributes(serde))]
+pub fn derive_deserialize_in(input: TokenStream) -> TokenStream {
+    let mut input = parse_macro_input!(input as DeriveInput);
+    de_in::expand_derive_deserialize_in(&mut input)
         .unwrap_or_else(syn::Error::into_compile_error)
         .into()
 }

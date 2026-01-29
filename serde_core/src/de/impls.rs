@@ -3171,3 +3171,183 @@ where
         s.parse().map_err(Error::custom)
     }
 }
+
+////////////////////////////////////////////////////////////////////////////////
+// DeserializeIn implementations
+//
+// For types that can be deserialized with a custom allocator.
+// Primitives delegate to regular Deserialize (they are Copy, no allocation needed).
+// Collection types (Vec, Box) use the allocator for their storage.
+
+#[cfg(feature = "allocator_api")]
+use crate::de::{DeserializeIn, DeserializeSeed};
+#[cfg(feature = "allocator_api")]
+use core::alloc::Allocator;
+
+// Blanket impl for primitives: they don't need allocation, just delegate to Deserialize
+#[cfg(feature = "allocator_api")]
+macro_rules! impl_deserialize_in_for_primitive {
+    ($($ty:ty)*) => {
+        $(
+            impl<'de, A: Allocator> DeserializeIn<'de, A> for $ty {
+                fn deserialize_in<D>(deserializer: D, _alloc: A) -> Result<Self, D::Error>
+                where
+                    D: Deserializer<'de>,
+                {
+                    <$ty as Deserialize<'de>>::deserialize(deserializer)
+                }
+            }
+        )*
+    };
+}
+
+#[cfg(feature = "allocator_api")]
+impl_deserialize_in_for_primitive! {
+    bool
+    i8 i16 i32 i64 i128 isize
+    u8 u16 u32 u64 u128 usize
+    f32 f64
+    char
+}
+
+// Option<T> where T: DeserializeIn
+#[cfg(feature = "allocator_api")]
+impl<'de, T, A> DeserializeIn<'de, A> for Option<T>
+where
+    T: DeserializeIn<'de, A>,
+    A: Allocator + Copy,
+{
+    fn deserialize_in<D>(deserializer: D, alloc: A) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        struct OptionVisitor<T, A: Allocator> {
+            alloc: A,
+            marker: PhantomData<T>,
+        }
+
+        impl<'de, T, A: Allocator + Copy> Visitor<'de> for OptionVisitor<T, A>
+        where
+            T: DeserializeIn<'de, A>,
+        {
+            type Value = Option<T>;
+
+            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                formatter.write_str("option")
+            }
+
+            fn visit_none<E>(self) -> Result<Self::Value, E>
+            where
+                E: Error,
+            {
+                Ok(None)
+            }
+
+            fn visit_some<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
+            where
+                D: Deserializer<'de>,
+            {
+                T::deserialize_in(deserializer, self.alloc).map(Some)
+            }
+
+            fn visit_unit<E>(self) -> Result<Self::Value, E>
+            where
+                E: Error,
+            {
+                Ok(None)
+            }
+        }
+
+        deserializer.deserialize_option(OptionVisitor {
+            alloc,
+            marker: PhantomData,
+        })
+    }
+}
+
+// Vec<T, A> where T: DeserializeIn
+#[cfg(feature = "allocator_api")]
+impl<'de, T, A> DeserializeIn<'de, A> for Vec<T, A>
+where
+    T: DeserializeIn<'de, A>,
+    A: Allocator + Copy,
+{
+    fn deserialize_in<D>(deserializer: D, alloc: A) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        struct VecVisitor<T, A: Allocator> {
+            alloc: A,
+            marker: PhantomData<T>,
+        }
+
+        impl<'de, T, A: Allocator + Copy> Visitor<'de> for VecVisitor<T, A>
+        where
+            T: DeserializeIn<'de, A>,
+        {
+            type Value = Vec<T, A>;
+
+            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                formatter.write_str("a sequence")
+            }
+
+            fn visit_seq<S>(self, mut seq: S) -> Result<Self::Value, S::Error>
+            where
+                S: SeqAccess<'de>,
+            {
+                let capacity = size_hint::cautious::<T>(seq.size_hint());
+                let mut values = Vec::<T, A>::with_capacity_in(capacity, self.alloc.clone());
+
+                while let Some(value) = tri!(seq.next_element_seed(WithAllocator {
+                    alloc: self.alloc.clone(),
+                    marker: PhantomData,
+                })) {
+                    values.push(value);
+                }
+
+                Ok(values)
+            }
+        }
+
+        deserializer.deserialize_seq(VecVisitor {
+            alloc,
+            marker: PhantomData,
+        })
+    }
+}
+
+#[cfg(feature = "allocator_api")]
+pub struct WithAllocator<T, A: Allocator> {
+    pub alloc: A,
+    pub marker: PhantomData<T>,
+}
+
+#[cfg(feature = "allocator_api")]
+impl<'de, T, A: Allocator + Copy> DeserializeSeed<'de> for WithAllocator<T, A>
+where
+    T: DeserializeIn<'de, A>,
+{
+    type Value = T;
+
+    fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        T::deserialize_in(deserializer, self.alloc)
+    }
+}
+
+// Box<T, A> where T: DeserializeIn
+#[cfg(feature = "allocator_api")]
+impl<'de, T, A> DeserializeIn<'de, A> for Box<T, A>
+where
+    T: DeserializeIn<'de, A>,
+    A: Allocator + Copy,
+{
+    fn deserialize_in<D>(deserializer: D, alloc: A) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        T::deserialize_in(deserializer, alloc.clone()).map(|value| Box::new_in(value, alloc))
+    }
+}

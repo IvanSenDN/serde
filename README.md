@@ -1,51 +1,33 @@
-# Serde &emsp; [![Build Status]][actions] [![Latest Version]][crates.io] [![serde msrv]][Rust 1.56] [![serde_derive msrv]][Rust 1.68]
+# Serde (allocator_api fork)
 
-[Build Status]: https://img.shields.io/github/actions/workflow/status/serde-rs/serde/ci.yml?branch=master
-[actions]: https://github.com/serde-rs/serde/actions?query=branch%3Amaster
-[Latest Version]: https://img.shields.io/crates/v/serde.svg
-[crates.io]: https://crates.io/crates/serde
-[serde msrv]: https://img.shields.io/crates/msrv/serde.svg?label=serde%20msrv&color=lightgray
-[serde_derive msrv]: https://img.shields.io/crates/msrv/serde_derive.svg?label=serde_derive%20msrv&color=lightgray
-[Rust 1.56]: https://blog.rust-lang.org/2021/10/21/Rust-1.56.0/
-[Rust 1.68]: https://blog.rust-lang.org/2023/03/09/Rust-1.68.0/
+**Fork of [serde-rs/serde](https://github.com/serde-rs/serde) with support for custom allocators via Rust nightly `allocator_api`.**
 
-**Serde is a framework for *ser*ializing and *de*serializing Rust data structures efficiently and generically.**
+Serialization/deserialization into arena (e.g. [bumpalo](https://github.com/fitzgen/bumpalo)): `DeserializeIn<'de, A>`, `#[derive(DeserializeIn)]`, and format-specific APIs like `serde_json::from_str_in`.
 
 ---
 
-You may be looking for:
+## Requirements
 
-- [An overview of Serde](https://serde.rs)
-- [Data formats supported by Serde](https://serde.rs/#data-formats)
-- [Setting up `#[derive(Serialize, Deserialize)]`](https://serde.rs/derive.html)
-- [Examples](https://serde.rs/examples.html)
-- [API documentation](https://docs.rs/serde)
-- [Release notes](https://github.com/serde-rs/serde/releases)
+- **Rust 1.93** or newer for standard usage.
+- **Nightly** and `#![feature(allocator_api)]` for the allocator API (arena deserialization).
 
-## Serde in action
+```toml
+# rust-toolchain.toml (optional, for allocator_api)
+[toolchain]
+channel = "nightly"
+```
 
-<details>
-<summary>
-Click to show Cargo.toml.
-<a href="https://play.rust-lang.org/?edition=2021&gist=72755f28f99afc95e01d63174b28c1f5" target="_blank">Run this code in the playground.</a>
-</summary>
+---
+
+## Standard usage (stable)
+
+Same API as upstream Serde. Use this fork via git:
 
 ```toml
 [dependencies]
-
-# The core APIs, including the Serialize and Deserialize traits. Always
-# required when using Serde. The "derive" feature is only required when
-# using #[derive(Serialize, Deserialize)] to make Serde work with structs
-# and enums defined in your crate.
-serde = { version = "1.0", features = ["derive"] }
-
-# Each data format lives in its own crate; the sample code below uses JSON
-# but you may be using a different one.
-serde_json = "1.0"
+serde = { git = "https://github.com/IvanSenDN/serde", features = ["derive"] }
+serde_json = { git = "https://github.com/IvanSenDN/serde_json" }
 ```
-
-</details>
-<p></p>
 
 ```rust
 use serde::{Deserialize, Serialize};
@@ -58,57 +40,106 @@ struct Point {
 
 fn main() {
     let point = Point { x: 1, y: 2 };
-
-    // Convert the Point to a JSON string.
-    let serialized = serde_json::to_string(&point).unwrap();
-
-    // Prints serialized = {"x":1,"y":2}
-    println!("serialized = {}", serialized);
-
-    // Convert the JSON string back to a Point.
-    let deserialized: Point = serde_json::from_str(&serialized).unwrap();
-
-    // Prints deserialized = Point { x: 1, y: 2 }
-    println!("deserialized = {:?}", deserialized);
+    let json = serde_json::to_string(&point).unwrap();
+    let restored: Point = serde_json::from_str(&json).unwrap();
+    println!("{:?}", restored);
 }
 ```
 
-## Getting help
+---
 
-Serde is one of the most widely used Rust libraries so any place that Rustaceans
-congregate will be able to help you out. For chat, consider trying the
-[#rust-questions] or [#rust-beginners] channels of the unofficial community
-Discord (invite: <https://discord.gg/rust-lang-community>), the [#rust-usage] or
-[#beginners] channels of the official Rust Project Discord (invite:
-<https://discord.gg/rust-lang>), or the [#general][zulip] stream in Zulip. For
-asynchronous, consider the [\[rust\] tag on StackOverflow][stackoverflow], the
-[/r/rust] subreddit which has a pinned weekly easy questions post, or the Rust
-[Discourse forum][discourse]. It's acceptable to file a support issue in this
-repo but they tend not to get as many eyes as any of the above and may get
-closed without a response after some time.
+## Allocator API (nightly)
 
-[#rust-questions]: https://discord.com/channels/273534239310479360/274215136414400513
-[#rust-beginners]: https://discord.com/channels/273534239310479360/273541522815713281
-[#rust-usage]: https://discord.com/channels/442252698964721669/443150878111694848
-[#beginners]: https://discord.com/channels/442252698964721669/448238009733742612
-[zulip]: https://rust-lang.zulipchat.com/#narrow/stream/122651-general
-[stackoverflow]: https://stackoverflow.com/questions/tagged/rust
-[/r/rust]: https://www.reddit.com/r/rust
-[discourse]: https://users.rust-lang.org
+Deserialize directly into an arena so all allocations use a custom allocator (e.g. `Bump`). Requires **nightly** and `#![feature(allocator_api)]`.
 
-<br>
+### Cargo.toml
 
-#### License
+```toml
+[dependencies]
+serde = { git = "https://github.com/IvanSenDN/serde", features = ["derive", "allocator_api"] }
+serde_json = { git = "https://github.com/IvanSenDN/serde_json", features = ["allocator_api"] }
+bumpalo = { version = "3", features = ["allocator_api", "collections"] }
+```
 
-<sup>
-Licensed under either of <a href="LICENSE-APACHE">Apache License, Version
-2.0</a> or <a href="LICENSE-MIT">MIT license</a> at your option.
-</sup>
+### Example
 
-<br>
+Your struct must be generic over an allocator and use types that support it (e.g. `String<A>`, `Vec<T, A>`). Use `#[derive(DeserializeIn)]` and `serde::DeserializeIn`:
 
-<sub>
-Unless you explicitly state otherwise, any contribution intentionally submitted
-for inclusion in Serde by you, as defined in the Apache-2.0 license, shall be
-dual licensed as above, without any additional terms or conditions.
-</sub>
+```rust
+#![feature(allocator_api)]
+
+use bumpalo::Bump;
+use core::alloc::Allocator;
+use serde::DeserializeIn;
+
+// Your own string type over allocator A (or use bumpalo::collections::String)
+pub struct String<A: Allocator> {
+    vec: Vec<u8, A>,
+}
+
+impl<A: Allocator> String<A> {
+    pub fn from_str_in(s: &str, alloc: A) -> Self {
+        let mut v = Vec::new_in(alloc);
+        v.extend_from_slice(s.as_bytes());
+        Self { vec: v }
+    }
+    pub fn as_str(&self) -> &str {
+        unsafe { core::str::from_utf8_unchecked(&self.vec) }
+    }
+}
+
+// Implement DeserializeIn for your string (see serde docs for full visitor).
+impl<'de, A: Allocator + Copy> serde::de::DeserializeIn<'de, A> for String<A> {
+    fn deserialize_in<D>(deserializer: D, alloc: A) -> Result<Self, D::Error>
+    where
+        D: serde::de::Deserializer<'de>,
+    {
+        struct StringVisitor<A: Allocator>(A);
+        impl<'de, A: Allocator + Copy> serde::de::Visitor<'de> for StringVisitor<A> {
+            type Value = String<A>;
+            fn expecting(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+                f.write_str("a string")
+            }
+            fn visit_str<E: serde::de::Error>(self, v: &str) -> Result<Self::Value, E> {
+                Ok(String::from_str_in(v, self.0))
+            }
+        }
+        deserializer.deserialize_str(StringVisitor(alloc))
+    }
+}
+
+#[derive(DeserializeIn)]
+pub struct Person<A: Allocator> {
+    name: String<A>,
+    age: u8,
+    jobs: Vec<String<A>, A>,
+}
+
+fn main() {
+    let bump = Bump::new();
+    let json = r#"{"name": "Alice", "age": 30, "jobs": ["Dev", "Lead"]}"#;
+
+    let person: Person<&Bump> = serde_json::from_str_in(json, &bump).unwrap();
+
+    println!("{}", person.name.as_str());
+    println!("{}", person.age);
+    println!("allocated: {} bytes", bump.allocated_bytes());
+}
+```
+
+### Available APIs (when `allocator_api` feature is enabled)
+
+- **serde:** trait `DeserializeIn<'de, A>`, `#[derive(DeserializeIn)]`, blanket impls for primitives and `Option`/`Vec`/`Box` with allocator.
+- **serde_json:** `from_str_in`, `from_slice_in`, `from_reader_in` — same as `from_str` / `from_slice` / `from_reader` but take an allocator and require `T: DeserializeIn<'de, A>`.
+
+---
+
+## Note
+
+These are **personal-use forks**. Development will follow only my own needs. I do not plan to publish to crates.io.
+
+---
+
+## License
+
+Licensed under either of [Apache License, Version 2.0](LICENSE-APACHE) or [MIT license](LICENSE-MIT) at your option.

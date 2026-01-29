@@ -1,21 +1,26 @@
 [package]
 name = "serde"
 version = "1.0.228"
-authors = ["Erick Tryzelaar <erick.tryzelaar@gmail.com>", "David Tolnay <dtolnay@gmail.com>"]
+authors = [
+    "Erick Tryzelaar <erick.tryzelaar@gmail.com>",
+    "David Tolnay <dtolnay@gmail.com>",
+]
 build = "build.rs"
 categories = ["encoding", "no-std", "no-std::no-alloc"]
 description = "A generic serialization/deserialization framework"
 documentation = "https://docs.rs/serde"
-edition = "2021"
+edition = "2024"
 homepage = "https://serde.rs"
 keywords = ["serde", "serialization", "no_std"]
 license = "MIT OR Apache-2.0"
 readme = "crates-io.md"
 repository = "https://github.com/serde-rs/serde"
-rust-version = "1.56"
+rust-version = "1.93"
 
 [dependencies]
-serde_core = { version = "=1.0.228", path = "../serde_core", default-features = false, features = ["result"] }
+serde_core = { version = "=1.0.228", path = "../serde_core", default-features = false, features = [
+    "result",
+] }
 serde_derive = { version = "1", optional = true, path = "../serde_derive" }
 
 [package.metadata.playground]
@@ -60,3 +65,6 @@ alloc = ["serde_core/alloc"]
 # does not preserve identity and may result in multiple copies of the same data.
 # Be sure that this is what you want before enabling this feature.
 rc = ["serde_core/rc"]
+
+# Support for custom allocators via nightly allocator_api feature.
+allocator_api = ["serde_core/allocator_api", "serde_derive?/allocator_api"]

@@ -632,6 +632,72 @@ pub trait Deserialize<'de>: Sized {
 pub trait DeserializeOwned: for<'de> Deserialize<'de> {}
 impl<T> DeserializeOwned for T where T: for<'de> Deserialize<'de> {}
 
+////////////////////////////////////////////////////////////////////////////////
+
+#[cfg(feature = "allocator_api")]
+use core::alloc::Allocator;
+
+/// A data structure that can be deserialized with a custom allocator.
+///
+/// This trait is similar to [`Deserialize`], but accepts an allocator parameter
+/// for all allocations during deserialization. The lifetime of the deserialized
+/// value is tied to the allocator's lifetime (e.g., `&'bump Bump`).
+///
+/// # Example
+///
+/// ```ignore
+/// #![feature(allocator_api)]
+///
+/// use core::alloc::Allocator;
+/// use serde::de::{DeserializeIn, Deserializer, Visitor, Error};
+/// use std::fmt::{self, Formatter};
+///
+/// pub struct String<A: Allocator> {
+///     vec: Vec<u8, A>,
+/// }
+///
+/// impl<A: Allocator> String<A> {
+///     pub fn from_str_in(s: &str, alloc: A) -> Self {
+///         let mut vec = Vec::new_in(alloc);
+///         vec.extend_from_slice(s.as_bytes());
+///         Self { vec }
+///     }
+/// }
+///
+/// impl<'de, A: Allocator + Clone> DeserializeIn<'de, A> for String<A> {
+///     fn deserialize_in<D>(deserializer: D, alloc: A) -> Result<Self, D::Error>
+///     where
+///         D: Deserializer<'de>,
+///     {
+///         struct StringVisitor<A: Allocator> {
+///             alloc: A,
+///         }
+///
+///         impl<'de, A: Allocator + Clone> Visitor<'de> for StringVisitor<A> {
+///             type Value = String<A>;
+///
+///             fn expecting(&self, f: &mut Formatter) -> fmt::Result {
+///                 f.write_str("a string")
+///             }
+///
+///             fn visit_str<E: Error>(self, v: &str) -> Result<Self::Value, E> {
+///                 Ok(String::from_str_in(v, self.alloc))
+///             }
+///         }
+///
+///         deserializer.deserialize_str(StringVisitor { alloc })
+///     }
+/// }
+/// ```
+#[cfg(feature = "allocator_api")]
+#[cfg_attr(docsrs, doc(cfg(feature = "allocator_api")))]
+pub trait DeserializeIn<'de, A: Allocator>: Sized {
+    /// Deserialize this value from the given deserializer using the provided allocator.
+    fn deserialize_in<D>(deserializer: D, alloc: A) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>;
+}
+
 /// `DeserializeSeed` is the stateful form of the `Deserialize` trait. If you
 /// ever find yourself looking for a way to pass data into a `Deserialize` impl,
 /// this trait is the way to do it.

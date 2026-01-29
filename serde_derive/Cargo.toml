@@ -1,22 +1,26 @@
 [package]
 name = "serde_derive"
 version = "1.0.228"
-authors = ["Erick Tryzelaar <erick.tryzelaar@gmail.com>", "David Tolnay <dtolnay@gmail.com>"]
+authors = [
+    "Erick Tryzelaar <erick.tryzelaar@gmail.com>",
+    "David Tolnay <dtolnay@gmail.com>",
+]
 categories = ["no-std", "no-std::no-alloc"]
 description = "Macros 1.1 implementation of #[derive(Serialize, Deserialize)]"
 documentation = "https://serde.rs/derive.html"
-edition = "2021"
+edition = "2024"
 exclude = ["build.rs"]
 homepage = "https://serde.rs"
 keywords = ["serde", "serialization", "no_std", "derive"]
 license = "MIT OR Apache-2.0"
 readme = "crates-io.md"
 repository = "https://github.com/serde-rs/serde"
-rust-version = "1.68"
+rust-version = "1.93"
 
 [features]
 default = []
 deserialize_in_place = []
+allocator_api = []
 
 [lib]
 name = "serde_derive"
@@ -25,7 +29,13 @@ proc-macro = true
 [dependencies]
 proc-macro2 = { workspace = true, features = ["proc-macro"] }
 quote = { workspace = true, features = ["proc-macro"] }
-syn = { workspace = true, features = ["clone-impls", "derive", "parsing", "printing", "proc-macro"] }
+syn = { workspace = true, features = [
+    "clone-impls",
+    "derive",
+    "parsing",
+    "printing",
+    "proc-macro",
+] }
 
 [dev-dependencies]
 serde = { version = "1", path = "../serde" }

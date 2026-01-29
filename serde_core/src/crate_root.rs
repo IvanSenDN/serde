@@ -140,6 +140,9 @@ macro_rules! crate_root {
         #[cfg_attr(all(docsrs, if_docsrs_then_no_serde_core), path = "core/format.rs")]
         mod format;
 
+        #[cfg(feature = "allocator_api")]
+        #[doc(inline)]
+        pub use crate::de::DeserializeIn;
         #[doc(inline)]
         pub use crate::de::{Deserialize, Deserializer};
         #[doc(inline)]

@@ -1,8 +1,11 @@
 [package]
 name = "serde_test_suite"
 version = "0.0.0"
-authors = ["Erick Tryzelaar <erick.tryzelaar@gmail.com>", "David Tolnay <dtolnay@gmail.com>"]
-edition = "2021"
+authors = [
+    "Erick Tryzelaar <erick.tryzelaar@gmail.com>",
+    "David Tolnay <dtolnay@gmail.com>",
+]
+edition = "2024"
 publish = false
 
 [features]

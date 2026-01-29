@@ -106,6 +106,7 @@
 //
 //    https://github.com/serde-rs/serde/issues/812
 #![cfg_attr(feature = "unstable", feature(never_type))]
+#![cfg_attr(feature = "allocator_api", feature(allocator_api))]
 #![allow(
     unknown_lints,
     bare_trait_objects,
@@ -253,6 +254,9 @@ macro_rules! crate_root {
             de, forward_to_deserialize_any, ser, Deserialize, Deserializer, Serialize, Serializer,
         };
 
+        #[cfg(feature = "allocator_api")]
+        pub use serde_core::de::DeserializeIn;
+
         // Used by generated code and doc tests. Not public API.
         #[doc(hidden)]
         mod private;
@@ -277,6 +281,12 @@ extern crate serde_derive;
 #[cfg(feature = "serde_derive")]
 #[cfg_attr(docsrs, doc(cfg(feature = "derive")))]
 pub use serde_derive::{Deserialize, Serialize};
+
+/// Derive macro for arena-allocated types.
+/// Available if serde is built with `features = ["derive", "allocator_api"]`.
+#[cfg(all(feature = "serde_derive", feature = "allocator_api"))]
+#[cfg_attr(docsrs, doc(cfg(all(feature = "derive", feature = "allocator_api"))))]
+pub use serde_derive::DeserializeIn;
 
 #[macro_export]
 #[doc(hidden)]
